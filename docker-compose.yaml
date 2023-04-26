@@ -4,29 +4,31 @@ services:
   redis:
     image: redis:alpine
     container_name: redis
-    ports:
-      - 6379:6379
-    
-
-  polyshop:
-    image: maven:3.9-amazoncorretto-19
-    depends_on:
-      - redis
+    expose:
+      - 6379
+    # ports:
+    #   - 6379:6379    
     networks:
-      - host
-    ports:
-      - 8091:8091 
-    environment:
-      - REDIS_HOST=localhost
-      - REDIS_PORT=6379
+      - internal
+
+  shopping:
+    image: maven:3.9-amazoncorretto-19
+    container_name: shopping
     volumes:
-      - polyshop:/usr/src/app
-      - .:/usr/src/app
-    command: ["sh", "-c", "cd /usr/src/app; mvn spring-boot:run"]
+      - .:/app
+      - maven-repo:/root/.m2
+    working_dir: /app
+    command: mvn spring-boot:run
+    environment:
+      - EUREKA_HOST=discovery-server
+    networks:
+      - spring_microservices
+      - internal
 
 volumes:
-  polyshop:
+  maven-repo:
 
 networks:
-  host:
-    # This network should be connected to the host network
+  internal:
+  spring_microservices:
+    external: true
