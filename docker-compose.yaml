@@ -11,9 +11,9 @@ services:
     networks:
       - internal
 
-  shopping:
+  cart:
     image: maven:3.9-amazoncorretto-19
-    container_name: shopping
+    container_name: cart
     volumes:
       - .:/app
       - maven-repo:/root/.m2

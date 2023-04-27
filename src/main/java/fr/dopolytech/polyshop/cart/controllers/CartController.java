@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -19,6 +21,8 @@ import fr.dopolytech.polyshop.cart.models.Product;
 import fr.dopolytech.polyshop.cart.models.Purchase;
 import fr.dopolytech.polyshop.cart.services.CartService;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.core.Response;
+import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/cart")
@@ -31,21 +35,28 @@ public class CartController {
 	}
 
 	@PostMapping(value = "/{id}")
-	public Product addToCart(@PathVariable("id") String id) {
-		return cartService.addToCart(id);
+	public Mono<Product> addToCart(@PathVariable("id") String id) {
+		return cartService.addToCart(new AddToCartDto(id, 1));
+	}
+
+	@PostMapping()
+	public Mono<Product> addToCart(@RequestBody AddToCartDto dto) {
+		return cartService.addToCart(dto);
 	}
 
 	@DeleteMapping(value = "/{id}")
-	public void removeFromCart(@PathVariable("id") String id) {
-		cartService.removeProductFrom(id);
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public Mono<Void> removeFromCart(@PathVariable("id") String id) {
+		return cartService.clearProduct(id);
 	}
 
 	@GetMapping
-	public List<Product> findAll() {
+	public Flux<Product> findAll() {
 		return cartService.findAll();
 	}
 
 	@DeleteMapping("/clear")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public void clear() {
 		cartService.clear();
 	}

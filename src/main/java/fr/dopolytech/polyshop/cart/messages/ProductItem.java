@@ -3,7 +3,7 @@ package fr.dopolytech.polyshop.cart.messages;
 import fr.dopolytech.polyshop.cart.models.Product;
 
 public class ProductItem {
-  public long productId;
+  public String productId;
   public long amount;
 
   public ProductItem() {

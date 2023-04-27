@@ -14,10 +14,13 @@ import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import fr.dopolytech.polyshop.cart.dtos.AddToCartDto;
 import fr.dopolytech.polyshop.cart.messages.ErrorMessage;
 import fr.dopolytech.polyshop.cart.messages.ShoppingCartMessage;
 import fr.dopolytech.polyshop.cart.models.Product;
 import fr.dopolytech.polyshop.cart.repositories.CartRepository;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 @Service
 public class CartService {
@@ -35,58 +38,28 @@ public class CartService {
 
   // @Autowired
   // public CartService(RabbitTemplate rabbitTemplate, Queue orderQueue) {
-  //   this.rabbitTemplate = rabbitTemplate;
-  //   this.orderQueue = orderQueue;
+  // this.rabbitTemplate = rabbitTemplate;
+  // this.orderQueue = orderQueue;
   // }
 
-  public Product addToCart(String id) {
-    Product product = getProductById(id);
-    if (product != null) {
-      product.amount += 1;
-    } else {
-      product = new Product(Long.parseLong(id), 1);
-    }
-    return cartRepository.save(product);
+  public Mono<Product> addToCart(AddToCartDto dto) {
+    return cartRepository.addToCart(dto);
   }
 
-  public List<Product> findAll() {
-    List<Object> objects = cartRepository.findAll();
-    return objects.stream().map(object -> (Product) object).collect(Collectors.toList());
+  public Flux<Product> findAll() {
+    return cartRepository.getProducts();
   }
 
-  public Product save(Product product) {
-    return cartRepository.save(product);
+  public Mono<Product> removeProductFrom(AddToCartDto dto) {
+    return cartRepository.removeFromCart(dto);
   }
 
-  public Product getProductById(String id) {
-    return cartRepository.findById(id);
+  public Mono<Void> clearProduct(String productId) {
+    return cartRepository.clearProduct(productId);
 }
 
-
-  public void removeProductFrom(String id) {
-    Product shoppingCartProduct = getProductById(id);
-
-    boolean deleteProduct = false;
-    if (shoppingCartProduct != null) {
-      if(shoppingCartProduct.amount == 1) {
-        deleteProduct = true;
-      } else {
-        shoppingCartProduct.amount -= 1;
-      }
-      cartRepository.save(shoppingCartProduct);
-    } else {
-      logger.error("Product not found in cart");
-      deleteProduct = true;
-    }
-
-    if(deleteProduct) { 
-      cartRepository.deleteById(id);
-    }
-    
-  }
-
-  public void clear() {
-    cartRepository.deleteAll();
+  public Mono<Void> clear() {
+    return cartRepository.clearProducts();
   }
 
   // -- RABBITMQ --
@@ -94,7 +67,7 @@ public class CartService {
 
   // This method is called when a message is received from the order service to
   public void checkout() {
-    List<Product> products = findAll();
+    List<Product> products = cartRepository.getProducts().toStream().toList();
     ShoppingCartMessage shoppingMessage = new ShoppingCartMessage(products);
     try {
       ObjectMapper mapper = new ObjectMapper();
@@ -117,13 +90,14 @@ public class CartService {
     try {
       ErrorMessage errorMessage = mapper.readValue(message, ErrorMessage.class);
       logger.info("Received error message from order service : " + errorMessage);
-      
+
       errorMessage.products.forEach(
-        product -> {
-          Product shoppingCartProduct = new Product(product.productId, product.amount);
-          save(shoppingCartProduct);
-        }
-      );
+          product -> {
+            Product shoppingCartProduct = new Product(product.productId, product.amount);
+            cartRepository.addToCart(new AddToCartDto(
+                shoppingCartProduct.productId,
+                shoppingCartProduct.amount));
+          });
 
     } catch (Exception e) {
       logger.error("Failed to parse JSON payload : ", e);
