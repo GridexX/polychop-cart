@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import fr.dopolytech.polyshop.cart.dtos.AddToCartDto;
+import fr.dopolytech.polyshop.cart.exceptions.CartEmptyException;
+import fr.dopolytech.polyshop.cart.exceptions.ClearProductsException;
 import fr.dopolytech.polyshop.cart.messages.ErrorMessage;
 import fr.dopolytech.polyshop.cart.messages.ShoppingCartMessage;
 import fr.dopolytech.polyshop.cart.models.Product;
@@ -56,28 +58,38 @@ public class CartService {
 
   public Mono<Void> clearProduct(String productId) {
     return cartRepository.clearProduct(productId);
-}
+  }
 
-  public Mono<Void> clear() {
-    return cartRepository.clearProducts();
+  public Mono<Void> clear() throws ClearProductsException {
+    return cartRepository.clearProducts()
+        .onErrorMap(error -> new ClearProductsException("Failed to clear products", error));
+
   }
 
   // -- RABBITMQ --
   // Those methods are used to communicate with the order service
 
   // This method is called when a message is received from the order service to
-  public void checkout() {
-    List<Product> products = cartRepository.getProducts().toStream().toList();
+  public Mono<Void> checkout() throws Exception {
+    List<Product> products = findAll().collectList().block();
+
+    if (products.isEmpty()) {
+      logger.error("Cart is empty");
+      throw new CartEmptyException();
+    }
+
     ShoppingCartMessage shoppingMessage = new ShoppingCartMessage(products);
+    logger.info("Sending message to order service : " + shoppingMessage);
     try {
       ObjectMapper mapper = new ObjectMapper();
       String json = mapper.writeValueAsString(shoppingMessage);
       rabbitTemplate.convertAndSend(orderQueue.getName(), json);
     } catch (Exception e) {
       logger.error("Failed to convert object", e);
+      throw e;
     }
     // Clear the cart after checkout
-    clear();
+    return clear().flatMap(cleared -> Mono.empty());
   }
 
   // This method is called when a message is received from the order service to

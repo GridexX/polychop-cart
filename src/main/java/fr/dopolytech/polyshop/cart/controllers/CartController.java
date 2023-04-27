@@ -17,12 +17,15 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import fr.dopolytech.polyshop.cart.dtos.AddToCartDto;
+import fr.dopolytech.polyshop.cart.dtos.ExceptionDto;
+import fr.dopolytech.polyshop.cart.exceptions.CartEmptyException;
 import fr.dopolytech.polyshop.cart.models.Product;
 import fr.dopolytech.polyshop.cart.models.Purchase;
 import fr.dopolytech.polyshop.cart.services.CartService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 @RestController
 @RequestMapping("/cart")
@@ -34,35 +37,54 @@ public class CartController {
 		this.cartService = cartService;
 	}
 
-	@PostMapping(value = "/{id}")
+	@PostMapping("/product/{id}")
 	public Mono<Product> addToCart(@PathVariable("id") String id) {
 		return cartService.addToCart(new AddToCartDto(id, 1));
 	}
 
-	@PostMapping()
+	@PostMapping("/product")
 	public Mono<Product> addToCart(@RequestBody AddToCartDto dto) {
 		return cartService.addToCart(dto);
 	}
 
-	@DeleteMapping(value = "/{id}")
+	@DeleteMapping("/product/{id}")
 	@ResponseStatus(HttpStatus.NO_CONTENT)
 	public Mono<Void> removeFromCart(@PathVariable("id") String id) {
 		return cartService.clearProduct(id);
 	}
 
 	@GetMapping
+	public Flux<Product> findAllProduct() {
+		return cartService.findAll();
+	}
+
+	@GetMapping("/product")
 	public Flux<Product> findAll() {
 		return cartService.findAll();
 	}
 
-	@DeleteMapping("/clear")
+	@DeleteMapping
 	@ResponseStatus(HttpStatus.NO_CONTENT)
-	public void clear() {
-		cartService.clear();
+	public Mono<Void> clear() {
+		return cartService.clear();
 	}
 
 	@PostMapping("/checkout")
-	public void checkout() {
-		cartService.checkout();
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public Mono<ResponseEntity<Object>> checkout() {
+		try {
+			// Launch the checkout process and return a Mono with a ResponseEntity
+			return cartService.checkout().map(purchase -> {
+				// If the checkout process is successful, return a ResponseEntity with the
+				// purchase
+				return ResponseEntity.noContent().build();
+			});
+		} catch (CartEmptyException e) {
+			return Mono.just(
+					ResponseEntity.badRequest().body(ExceptionDto.create(HttpStatus.BAD_REQUEST.toString(), e.getMessage())));
+		} catch (Exception e) {
+			return Mono.just(ResponseEntity.internalServerError()
+					.body(ExceptionDto.create(HttpStatus.INTERNAL_SERVER_ERROR.toString(), e.getMessage())));
+		}
 	}
 }

@@ -16,7 +16,6 @@ import org.springframework.data.redis.core.RedisTemplate;
 @Repository
 public class CartRepository {
 
-    
     @Autowired
     private ReactiveRedisOperations<String, Long> purchaseOperations;
 
@@ -48,7 +47,7 @@ public class CartRepository {
     }
 
     public Mono<Void> clearProducts() {
-        return purchaseOperations.keys("*").flatMap(key -> purchaseOperations.delete(key)).then();
+        return purchaseOperations.delete(purchaseOperations.keys("*")).then();
     }
 
 }
