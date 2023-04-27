@@ -4,6 +4,8 @@ services:
   redis:
     image: redis:alpine
     container_name: redis
+    volumes:
+      - redis-data:/data
     expose:
       - 6379
     # ports:
@@ -27,6 +29,7 @@ services:
 
 volumes:
   maven-repo:
+  redis-data:
 
 networks:
   internal:
