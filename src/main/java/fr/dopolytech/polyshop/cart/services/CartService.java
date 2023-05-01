@@ -107,8 +107,8 @@ public class CartService {
           product -> {
             Product shoppingCartProduct = new Product(product.productId, product.amount);
             cartRepository.addToCart(new AddToCartDto(
-                shoppingCartProduct.productId,
-                shoppingCartProduct.amount));
+                shoppingCartProduct.getId(),
+                shoppingCartProduct.getAmount()));
           });
 
     } catch (Exception e) {

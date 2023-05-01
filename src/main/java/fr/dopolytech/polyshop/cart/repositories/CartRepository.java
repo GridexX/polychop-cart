@@ -20,8 +20,8 @@ public class CartRepository {
     private ReactiveRedisOperations<String, Long> purchaseOperations;
 
     public Mono<Product> addToCart(AddToCartDto dto) {
-        return purchaseOperations.opsForValue().increment(dto.productId, dto.amount)
-                .map(quantity -> new Product(dto.productId, quantity.intValue()));
+        return purchaseOperations.opsForValue().increment(dto.id, dto.amount)
+                .map(quantity -> new Product(dto.id, quantity.intValue()));
     }
 
     public Mono<Void> clearProduct(String productId) {
@@ -29,14 +29,14 @@ public class CartRepository {
     }
 
     public Mono<Product> removeFromCart(AddToCartDto dto) {
-        if (!purchaseOperations.hasKey(dto.productId).block()) {
-            return Mono.just(new Product(dto.productId, 0));
+        if (!purchaseOperations.hasKey(dto.id).block()) {
+            return Mono.just(new Product(dto.id, 0));
         }
-        if (purchaseOperations.opsForValue().get(dto.productId).block() <= dto.amount) {
-            return purchaseOperations.delete(dto.productId).map(count -> new Product(dto.productId, 0));
+        if (purchaseOperations.opsForValue().get(dto.id).block() <= dto.amount) {
+            return purchaseOperations.delete(dto.id).map(count -> new Product(dto.id, 0));
         }
-        return purchaseOperations.opsForValue().decrement(dto.productId, dto.amount)
-                .map(quantity -> new Product(dto.productId, quantity.intValue()));
+        return purchaseOperations.opsForValue().decrement(dto.id, dto.amount)
+                .map(quantity -> new Product(dto.id, quantity.intValue()));
     }
 
     public Flux<Product> getProducts() {

@@ -16,6 +16,8 @@ services:
   cart:
     image: maven:3.9-amazoncorretto-19
     container_name: cart
+    expose:
+      - 8083
     volumes:
       - .:/app
       - maven-repo:/root/.m2

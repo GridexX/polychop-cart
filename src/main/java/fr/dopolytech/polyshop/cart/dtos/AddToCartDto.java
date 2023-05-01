@@ -1,19 +1,14 @@
 package fr.dopolytech.polyshop.cart.dtos;
 
+import lombok.Data;
+
+@Data
 public class AddToCartDto {
-    public String productId;
+    public String id;
     public long amount;
 
-    public String getProductId() {
-        return productId;
-    }
-
-    public long getQuantity() {
-        return amount ;
-    }
-
-    public AddToCartDto(String productId, long amount ) {
-        this.productId = productId;
+    public AddToCartDto(String id, long amount ) {
+        this.id = id;
         this.amount = amount;
     }
 }
